@@ -5,7 +5,7 @@ import * as open from "https://deno.land/x/open@v0.0.5/index.ts";
 interface GoogleCommand {
 	name: string;
 	// https://stenevang.wordpress.com/2013/02/22/google-advanced-power-search-url-request-parameters/
-	tbm?: string; 
+	tbm?: string;
 	description?: string;
 }
 
@@ -13,29 +13,52 @@ interface SearchOptions {
 	site?: string;
 }
 
-/** Read contents from Reader. If result doesn't resolve within timeout, return empty string. */
-async function read_query(reader: Deno.Reader, opts: { timeout: number }) {
-	let resolved = false;
-	let line_iter = buffer.readLines(reader);
-	let promise = line_iter.next().then((result) => {
-		resolved = true;
-		return result.done ? "" : result.value;
-	});
-	await new Promise((resolve) => setTimeout(resolve, opts.timeout));
-	if (!resolved) return "";
-	let query = await promise;
-	for await (let line of line_iter) query += line + "\n";
-	return query;
+class PromiseTimeoutError extends Error {
+	override name = "PromiseTimeoutError";
+	constructor(public timeout: number) {
+		super(`Failed to resolve promise within timeout.`);
+	}
+}
+
+/**
+ * Consume an async iterator into an array.
+ *
+ * @param iter - The async iterator to consume.
+ * @param opts
+ * @param opts.wait - Max wait time for first iterator result.
+ *
+ * @throws {@link PromiseTimeoutError} If first iterator result fails to resolve within wait time.
+ */
+async function to_array<T>(
+	iter: AsyncIterableIterator<T>,
+	opts: { wait: number },
+): Promise<T[]> {
+	let first: IteratorResult<T> | undefined;
+	iter.next().then((iresult) => first = iresult);
+	await new Promise<void>((res) => setTimeout(res, opts.wait));
+	if (!first) throw new PromiseTimeoutError(opts.wait);
+	if (first.done) return [];
+	let parts = [first.value];
+	for await (let line of iter) parts.push(line);
+	return parts;
 }
 
 function google(cmd: GoogleCommand) {
-	return async ({ site }: SearchOptions, query?: string) => {
-		if (!query) query = await read_query(Deno.stdin, { timeout: 10 });
-		if (query === "") {
-			throw new cliffy.ValidationError(
-				"Must provide query directly or via stdin.",
-			);
-		}
+	return async ({ site }: SearchOptions, ...parts: string[]) => {
+		let query = parts.length > 0
+			? parts.join(" ")
+			: await to_array(buffer.readLines(Deno.stdin), { wait: 10 })
+				.then((arr) => arr.join("\n"))
+				.catch(
+					(e) => {
+						if (e instanceof PromiseTimeoutError) {
+							throw new cliffy.ValidationError(
+								"Missing query. Must provide as an argument or via stdin.",
+							);
+						}
+						throw e;
+					},
+				);
 		if (site) query += " site:" + site;
 		let url = new URL("https://google.com/search");
 		url.searchParams.set("q", query);
@@ -50,9 +73,9 @@ function google(cmd: GoogleCommand) {
 
 let cli = new cliffy.Command()
 	.name("google")
-	.version("0.1.0")
+	.version("0.1.1")
 	.description("Launch Google from the command line.")
-	.arguments("[query:string]")
+	.arguments("[...query:string]")
 	.globalOption(
 		"-s, --site <site:string>",
 		"Search one site (e.g., wikipedia.org).",
@@ -76,7 +99,7 @@ for (
 ) {
 	cli
 		.command(cmd.name, cmd.description ?? `Search ${cmd.name}.`)
-		.arguments("[query:string]")
+		.arguments("[...query:string]")
 		.action(google(cmd));
 }
 
