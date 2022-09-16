@@ -11,6 +11,7 @@ interface GoogleCommand {
 
 interface SearchOptions {
 	site?: string;
+	raw?: boolean;
 }
 
 class PromiseTimeoutError extends Error {
@@ -44,7 +45,7 @@ async function to_array<T>(
 }
 
 function google(cmd: GoogleCommand) {
-	return async ({ site }: SearchOptions, ...parts: string[]) => {
+	return async ({ site, raw }: SearchOptions, ...parts: string[]) => {
 		let query = parts.length > 0
 			? parts.join(" ")
 			: await to_array(buffer.readLines(Deno.stdin), { wait: 10 })
@@ -67,15 +68,20 @@ function google(cmd: GoogleCommand) {
 		} else {
 			url.pathname = `/${cmd.name}`;
 		}
-		await open.open(url.href);
+
+		raw ? console.log(url.href) : await open.open(url.href);
 	};
 }
 
 let cli = new cliffy.Command()
 	.name("google")
-	.version("0.1.1")
+	.version("0.1.2")
 	.description("Launch Google from the command line.")
 	.arguments("[...query:string]")
+	.globalOption(
+		"-r, --raw",
+		"Write URL to stdout instead of opening the default browser.",
+	)
 	.globalOption(
 		"-s, --site <site:string>",
 		"Search one site (e.g., wikipedia.org).",

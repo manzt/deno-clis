@@ -28,4 +28,8 @@ google scholar "stochasitc processes"
 
 # from stdin
 echo "funny cats" | google images
+
+# write to stdout instead of opening browser
+google --raw "the meaning of life"
+# https://google.com/search?q=the+meaning+of+life
 ```
