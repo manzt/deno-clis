@@ -4,7 +4,8 @@ simple (installable) clis built with [deno](https://deno.land/)
 
 ## clis
 
-- [`google`](#google) – query and open google in the browser from the command line
+- [`google`](#google) – query and open google in the browser from the command
+  line
 
 ## `google`
 
@@ -14,7 +15,7 @@ query and open google in the browser from the command line
 deno install --allow-run https://raw.githubusercontent.com/manzt/deno-clis/main/google.ts
 ```
 
-**Usage** 
+**Usage**
 
 ```bash
 # simple search
@@ -34,4 +35,10 @@ echo "funny cats" | google images
 # write to stdout instead of opening browser
 google --raw "the meaning of life"
 # https://google.com/search?q=the+meaning+of+life
+
+# open google docs
+google docs
+
+# create new blank document
+google docs --new
 ```

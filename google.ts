@@ -75,14 +75,14 @@ function google(cmd: GoogleCommand) {
 
 let cli = new cliffy.Command()
 	.name("google")
-	.version("0.1.2")
+	.version("0.2.0")
 	.description("Launch Google from the command line.")
 	.arguments("[...query:string]")
-	.globalOption(
+	.option(
 		"-r, --raw",
 		"Write URL to stdout instead of opening the default browser.",
 	)
-	.globalOption(
+	.option(
 		"-s, --site <site:string>",
 		"Search one site (e.g., wikipedia.org).",
 	)
@@ -106,7 +106,46 @@ for (
 	cli
 		.command(cmd.name, cmd.description ?? `Search ${cmd.name}.`)
 		.arguments("[...query:string]")
+		.option(
+			"-r, --raw",
+			"Write URL to stdout instead of opening the default browser.",
+		)
+		.option(
+			"-s, --site <site:string>",
+			"Search one site (e.g., wikipedia.org).",
+		)
 		.action(google(cmd));
+}
+
+interface GoogleDriveCommand {
+	name: string;
+	/** subdomain if differs from name */
+	subdomain?: string;
+}
+
+function drive(cmd: GoogleDriveCommand) {
+	return async (opts: { new?: boolean }) => {
+		let url = new URL(
+			opts.new
+				? `https://${cmd.name}.new`
+				: `https://${cmd.subdomain ?? cmd.name}.google.com`,
+		);
+		await open.open(url.href);
+	};
+}
+
+for (
+	let cmd of [
+		{ name: "cal", subdomain: "calendar" },
+		{ name: "docs" },
+		{ name: "sheets" },
+		{ name: "slides" },
+	]
+) {
+	cli
+		.command(cmd.name, `Open ${cmd.subdomain ?? cmd.name}.`)
+		.option("-n, --new", "Create a new entity.")
+		.action(drive(cmd));
 }
 
 await cli.parse(Deno.args);
