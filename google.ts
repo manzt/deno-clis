@@ -140,6 +140,7 @@ for (
 		{ name: "docs" },
 		{ name: "sheets" },
 		{ name: "slides" },
+		{ name: "drive" },
 	]
 ) {
 	cli
