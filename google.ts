@@ -1,6 +1,5 @@
 import * as buffer from "https://deno.land/std@0.155.0/io/buffer.ts";
-import * as cliffy from "https://deno.land/x/cliffy@v0.25.0/command/mod.ts";
-import * as open from "https://deno.land/x/open@v0.0.5/index.ts";
+import * as cliffy from "https://deno.land/x/cliffy@v1.0.0-rc.3/command/mod.ts";
 
 interface GoogleCommand {
 	name: string;
@@ -19,6 +18,11 @@ class PromiseTimeoutError extends Error {
 	constructor(public timeout: number) {
 		super(`Failed to resolve promise within timeout.`);
 	}
+}
+
+function open(url: string) {
+	let cmd = new Deno.Command("open", { args: [url] });
+	return cmd.output();
 }
 
 /**
@@ -69,7 +73,7 @@ function google(cmd: GoogleCommand) {
 			url.pathname = `/${cmd.name}`;
 		}
 
-		raw ? console.log(url.href) : await open.open(url.href);
+		raw ? console.log(url.href) : await open(url.href);
 	};
 }
 
@@ -130,7 +134,7 @@ function drive(cmd: GoogleDriveCommand) {
 				? `https://${cmd.name}.new`
 				: `https://${cmd.subdomain ?? cmd.name}.google.com`,
 		);
-		await open.open(url.href);
+		await open(url.href);
 	};
 }
 
