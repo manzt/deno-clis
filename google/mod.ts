@@ -1,5 +1,4 @@
-import * as buffer from "https://deno.land/std@0.155.0/io/buffer.ts";
-import * as cliffy from "https://deno.land/x/cliffy@v1.0.0-rc.3/command/mod.ts";
+import * as cliffy from "jsr:@cliffy/command@1.0.0-rc.4";
 
 interface GoogleCommand {
 	name: string;
@@ -26,33 +25,33 @@ function open(url: string) {
 }
 
 /**
- * Consume an async iterator into an array.
- *
- * @param iter - The async iterator to consume.
- * @param opts
- * @param opts.wait - Max wait time for first iterator result.
- *
- * @throws {@link PromiseTimeoutError} If first iterator result fails to resolve within wait time.
+ * Read from stdin in chunks.
+ * @param wait - Time to wait for initial input
+ * @returns Array of chunks
  */
-async function to_array<T>(
-	iter: AsyncIterableIterator<T>,
-	opts: { wait: number },
-): Promise<T[]> {
-	let first: IteratorResult<T> | undefined;
-	iter.next().then((iresult) => first = iresult);
-	await new Promise<void>((res) => setTimeout(res, opts.wait));
-	if (!first) throw new PromiseTimeoutError(opts.wait);
-	if (first.done) return [];
-	let parts = [first.value];
-	for await (let line of iter) parts.push(line);
-	return parts;
+async function read_chunks(
+	readable: ReadableStream<Uint8Array>,
+	{ wait = 10 }: { wait?: number } = {},
+): Promise<Array<string>> {
+	let { promise, resolve, reject } = Promise.withResolvers<Array<string>>();
+	let on_abort = () => reject(new PromiseTimeoutError(wait));
+	let stream = readable.pipeThrough(new TextDecoderStream());
+	let chunks: Array<string> = [];
+	let signal = AbortSignal.timeout(wait);
+	signal.addEventListener("abort", on_abort);
+	for await (let chunk of stream) {
+		chunks.push(chunk);
+		signal.removeEventListener("abort", on_abort);
+	}
+	resolve(chunks);
+	return promise;
 }
 
 function google(cmd: GoogleCommand) {
 	return async ({ site, raw }: SearchOptions, ...parts: string[]) => {
 		let query = parts.length > 0
 			? parts.join(" ")
-			: await to_array(buffer.readLines(Deno.stdin), { wait: 10 })
+			: await read_chunks(Deno.stdin.readable)
 				.then((arr) => arr.join("\n"))
 				.catch(
 					(e) => {

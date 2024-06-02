@@ -1,4 +1,7 @@
 {
+	"name": "@manzt/google",
+	"version": "0.2.0",
+	"exports": "./mod.ts",
 	"lint": {
 		"rules": {
 			"exclude": ["prefer-const"]
@@ -6,8 +9,5 @@
 	},
 	"fmt": {
 		"useTabs": true
-	},
-	"workspaces": [
-		"./google"
-	]
+	}
 }
