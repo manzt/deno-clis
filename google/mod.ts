@@ -12,13 +12,6 @@ interface SearchOptions {
 	raw?: boolean;
 }
 
-class PromiseTimeoutError extends Error {
-	override name = "PromiseTimeoutError";
-	constructor(public timeout: number) {
-		super(`Failed to resolve promise within timeout.`);
-	}
-}
-
 function open(url: string) {
 	let cmd = new Deno.Command("open", { args: [url] });
 	return cmd.output();
