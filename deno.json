@@ -8,6 +8,6 @@
 		"useTabs": true
 	},
 	"workspaces": [
-		"./google"
+		"./googler"
 	]
 }

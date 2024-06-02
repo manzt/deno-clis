@@ -1,8 +1,12 @@
-## @manzt/google
+# @manzt/google
 
 [![JSR](https://jsr.io/badges/@manzt/googler)](https://jsr.io/@manzt/googler)
 
 query and open google in the browser from the command line
+
+```bash
+deno install --allow-run=open --name=google jsr:@manzt/googler
+```
 
 ```bash
 # simple search
