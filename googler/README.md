@@ -1,4 +1,4 @@
-# @manzt/google
+# @manzt/googler
 
 [![JSR](https://jsr.io/badges/@manzt/googler)](https://jsr.io/@manzt/googler)
 
