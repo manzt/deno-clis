@@ -12,7 +12,7 @@ simple (installable) clis built with [deno](https://deno.land/)
 query and open google in the browser from the command line
 
 ```bash
-deno install --allow-run https://raw.githubusercontent.com/manzt/deno-clis/main/google.ts
+deno install --allow-run --name google jsr:@manzt/google 
 ```
 
 **Usage**

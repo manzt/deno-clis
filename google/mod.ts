@@ -24,45 +24,40 @@ function open(url: string) {
 	return cmd.output();
 }
 
-/**
- * Read from stdin in chunks.
- * @param wait - Time to wait for initial input
- * @returns Array of chunks
- */
-async function read_chunks(
-	readable: ReadableStream<Uint8Array>,
-	{ wait = 10 }: { wait?: number } = {},
-): Promise<Array<string>> {
-	let { promise, resolve, reject } = Promise.withResolvers<Array<string>>();
-	let on_abort = () => reject(new PromiseTimeoutError(wait));
-	let stream = readable.pipeThrough(new TextDecoderStream());
-	let chunks: Array<string> = [];
-	let signal = AbortSignal.timeout(wait);
-	signal.addEventListener("abort", on_abort);
-	for await (let chunk of stream) {
-		chunks.push(chunk);
-		signal.removeEventListener("abort", on_abort);
-	}
-	resolve(chunks);
-	return promise;
+function try_read_stdin(readable: ReadableStream<Uint8Array>): Promise<string> {
+	// Try reading from stdin but if no input is provided within 10ms, throw an error.
+	return new Promise((resolve, reject) => {
+		let signal = AbortSignal.timeout(10);
+		let on_abort = () => {
+			reject(
+				new cliffy.ValidationError(
+					"Missing query. Must provide as an argument or via stdin.",
+				),
+			);
+		};
+		signal.addEventListener("abort", on_abort);
+		let chunks: Array<string> = [];
+		readable
+			.pipeThrough(new TextDecoderStream())
+			.pipeTo(
+				new WritableStream({
+					write(chunk) {
+						chunks.push(chunk);
+						signal.removeEventListener("abort", on_abort);
+					},
+					close() {
+						resolve(chunks.join("\n"));
+					},
+				}),
+			);
+	});
 }
 
 function google(cmd: GoogleCommand) {
 	return async ({ site, raw }: SearchOptions, ...parts: string[]) => {
 		let query = parts.length > 0
 			? parts.join(" ")
-			: await read_chunks(Deno.stdin.readable)
-				.then((arr) => arr.join("\n"))
-				.catch(
-					(e) => {
-						if (e instanceof PromiseTimeoutError) {
-							throw new cliffy.ValidationError(
-								"Missing query. Must provide as an argument or via stdin.",
-							);
-						}
-						throw e;
-					},
-				);
+			: await try_read_stdin(Deno.stdin.readable);
 		if (site) query += " site:" + site;
 		let url = new URL("https://google.com/search");
 		url.searchParams.set("q", query);
@@ -71,7 +66,6 @@ function google(cmd: GoogleCommand) {
 		} else {
 			url.pathname = `/${cmd.name}`;
 		}
-
 		raw ? console.log(url.href) : await open(url.href);
 	};
 }
